@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eansoft.comment.service.mapper.CommentMapper"> 
+
+	<!-- 댓글 리스트 -->
+ 	<select id="selectCommentList" parameterType="java.lang.Integer" resultType="com.eansoft.comment.service.CommentVO">
+       SELECT commentcode, boardcode, comments, commentwriter, commentregdate, commentlayer, commentorder, commentgroup
+       FROM comments
+       where boardcode = #{boardcode}
+	   ORDER BY commentgroup, commentorder DESC, commentlayer
+    </select>
+    
+    <!-- 댓글 등록 -->
+    <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentcode">
+     	<selectKey keyProperty="commentcode" resultType="java.lang.Integer" order="BEFORE">
+	        SELECT commentcodeseq.NEXTVAL FROM DUAL
+	    </selectKey>
+        insert into
+        comments(
+        	  commentcode
+            , boardcode
+            , comments
+            , commentwriter
+            , commentregdate
+            , commentgroup
+            )
+        values(
+        	  #{commentcode}
+            , #{boardcode}
+            , #{comments}
+            , #{commentwriter}
+            , sysdate
+            , #{commentcode}
+            )
+    </insert>
+    
+     <!-- 대댓글 달기: 그룹오더 증가 -->
+    <update id="commentOrdergain">
+    	update comments
+    	set commentorder = commentorder + 2
+    	where commentgroup = #{commentgroup} and commentorder >= #{commentorder}    
+    </update>
+   
+    <!-- 대댓글 달기: 대댓글 삽입 -->
+    <insert id="insertSubComment">
+    	insert into
+        comments(
+        	  commentcode
+            , boardcode
+            , comments
+            , commentwriter
+            , commentregdate
+            , commentgroup
+            , commentorder
+            , commentlayer
+            )
+        values(
+        	  commentcodeseq.NEXTVAL
+            , #{boardcode}
+            , #{comments}
+            , #{commentwriter}
+            , sysdate
+            , #{commentgroup}
+            , #{commentorder} + 1
+            , #{commentlayer} + 1           
+            )  
+    </insert>
+    
+    <!-- commentcode로 댓글 가져오기 -->
+    <select id="selectCommentByCommentcode" parameterType="java.lang.Integer" resultType="com.eansoft.comment.service.CommentVO">
+    	select *
+    	from comments
+    	where commentcode = #{commentcode}
+    </select>
+    
+    
+    <!-- 댓글 수정 -->
+    <update id="updateComment">
+        update comments 
+        set   commentwriter = #{commentwriter}
+        	, comments = #{comments}
+            , commentregdate = sysdate
+        where
+            commentcode = #{commentcode}
+    </update>
+    
+    <!-- 댓글 삭제 -->
+    <delete id="deleteComment">
+        delete from comments
+        where
+            commentcode = #{commentcode}
+    </delete>
+
+</mapper>
+ 

@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eansoft.board.service.mapper.BoardMapper">  
+   
+    <!-- 게시글 리스트 조회 --> 
+    <select id="selectBoardList" parameterType="Map" resultType="BoardVO">  
+      <include refid="pagingHeader"></include>    
+	       SELECT rownum, code, title, content, writer, regdate, readcnt  
+	       FROM board
+	       <include refid="search"/>
+		   ORDER BY groupcode DESC, groupord ASC
+	   <include refid="pagingFooter"></include>
+    </select>
+    
+    <!-- 전체 리스트 개수 -->
+    <select id="selectBoardListCnt" parameterType="BoardVO" resultType="java.lang.Integer">
+        select count(*) from board
+    </select>
+    
+    <!-- 게시글 등록 -->
+    <insert id="insertBoard" useGeneratedKeys="true" keyProperty="code">
+	    <selectKey keyProperty="code" resultType="java.lang.Integer" order="BEFORE">
+	        SELECT codeseq.NEXTVAL FROM DUAL
+	    </selectKey>
+        insert into
+        board(
+        	  code
+            , title
+            , content
+            , writer
+            , groupcode
+            )
+        values(
+        	  #{code}
+            , #{title}
+            , #{content}
+            , #{writer}
+            , #{code}
+            )
+    </insert>
+    
+    <!-- 답글 달기: 그룹오더 증가 -->
+    <update id="replyOrdergain">
+    	update board
+    	set groupord = groupord + 1
+    	where groupcode = #{groupCode} and groupord > #{groupOrd}    
+    </update>
+   
+    <!-- 답글 달기: 답글 삽입 -->
+   <insert id="insertReply">
+    	insert into 
+    	board (
+    		  code
+    		, title
+    		, content
+    		, writer
+    		, regdate
+    		, grouplayer
+    		, groupord
+    		, groupcode
+    	 )
+    	values(
+    		  codeseq.nextval
+    		, #{title}
+    		, #{content}
+    		, #{writer}
+    		, sysdate
+    		, #{groupLayer} + 1
+    		, #{groupOrd} + 1
+    		, #{groupCode}
+    	)    
+    </insert>
+    
+    <!-- 답글 삭제 -->
+    <delete id="deleteReply">
+    	delete from board
+    	where code = #{code}
+    </delete>
+    
+    <!-- 게시글 삭제 시 댓글 삭제 -->
+    <delete id="deleteCommentByBoardcode">
+    	delete from comments
+    	where boardcode = #{code}
+    </delete>
+    
+    
+    
+    <!-- 파일 삽입 -->
+    <insert id="insertFile">
+        insert into
+        fileupload(
+        	  filecode
+            , originalfilename
+            , storedfilename
+            , boardcode
+            , fileregdate
+            , filesize
+            , fileextension
+            )
+        values(
+        	  fileseq.nextval
+            , #{originalfilename}
+            , #{storedfilename}
+            , #{boardcode}
+            , sysdate
+            , #{filesize}
+            , #{fileextension}
+            )
+    </insert>
+        
+    <!-- 게시글 수정 -->
+    <update id="updateBoard">
+        update board 
+        set   title = #{title}
+            , content = #{content}
+            , writer = #{writer}
+            , regdate = sysdate
+        where
+            code = #{code}
+    </update>
+    
+    <!-- 게시글 삭제 -->
+    <delete id="deleteBoard">
+     delete from board
+	    <choose>
+	    	<when test ='groupCode == code'>
+	    		where groupcode = #{code}
+	    	</when>
+	    	<otherwise>
+	    		 where code = #{code}
+	    	</otherwise>
+	    </choose>     
+    </delete>
+    
+    <!-- 게시글 상세보기 -->
+    <select id="selectBoardByCode" parameterType="BoardVO" resultType="BoardVO">
+        select * 
+        from board
+        where
+            code = #{code}
+    </select>
+    
+    <!-- 파일 상세보기 -->
+    <select id="selectFileListByCode" parameterType="BoardVO" resultType="hashmap">
+        select filecode, originalfilename,  ROUND(filesize/1024,1) AS filesize, storedfilename
+        from fileupload
+        where
+            boardcode = #{code}
+        order by filecode 
+    </select>
+    
+     <select id="selectFileByFileCode" parameterType="java.lang.Integer" resultType="hashmap">
+        select filecode, originalfilename, storedfilename
+        from fileupload
+        where
+            filecode = #{filecode}
+    </select>
+    
+  
+  	<!-- 조회수 증가 -->
+    <update id="updateReadcnt" >
+        update board
+        set readcnt = readcnt + 1
+        where
+            code = #{code}
+    </update>
+    
+    <!-- 검색 SQL -->
+    <sql id="search">
+    	<choose>
+    		<when test = "searchOption == 'all'">   		
+    		</when>
+    		<when test = "searchOption == 'titleContent'">
+    			where title like '%'||#{keyword}||'%'
+    			or content like '%'||#{keyword}||'%'
+    		</when>
+    		<otherwise>
+    			where ${searchOption} like '%'||#{keyword}||'%'   			
+    		</otherwise>
+    	</choose>
+    </sql>
+    
+    <!-- 페이징 SQL -->
+    <sql id="pagingHeader">
+    	select * from (
+    		select rownum as rn, A.* from( 
+    </sql>
+    <sql id="pagingFooter">
+    		) A
+    	) where rn between #{start} and #{end}
+    </sql>
+    
+    
+    
+    <!-- 
+    <insert id="insertReply">
+        insert into
+        board(        	 
+             title
+            , content
+            , writer
+            
+            ,  code)
+        values(
+        	  
+             #{title}
+            , #{content}
+            , #{writer}
+            
+            , codeseq.nextval)
+    </insert>
+    
+     <update id="updateGroupOrd">
+       update board 
+       set groupOrd = groupOrd + 1 
+       where originNo = #{originNo} and groupOrd > #{groupOrd}
+    </update> -->
+ 
+</mapper>
